@@ -1,0 +1,14 @@
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following packages were automatically installed and are no longer required:
+  dbconfig-common dbconfig-no-thanks javascript-common libjs-jquery
+  libjs-sphinxdoc libjs-underscore libreadline5 mariadb-common php php-bz2
+  php-php-gettext php-phpseclib php-tcpdf php7.2 php7.2-bz2
+Use 'apt autoremove' to remove them.
+The following packages will be REMOVED:
+  phpmyadmin*
+0 upgraded, 0 newly installed, 1 to remove and 0 not upgraded.
+2 not fully installed or removed.
+After this operation, 25.0 MB disk space will be freed.
+Do you want to continue? [Y/n] 
