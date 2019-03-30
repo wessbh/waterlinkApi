@@ -243,6 +243,7 @@ app.get('/testprix', (req, res) => {
     res.send({'Prix': getPourcentage(40, 30)});
 
 });
+
 app.get('/reset', (req,res) => {
     var id_user = req.query.id_user;
     sql = 'UPDATE `consommation` SET `valeur`= 0,`total`= 0,`prix`= 0,`tranche`= 200,`alert_sent` = 0  WHERE id_user = ?';    
