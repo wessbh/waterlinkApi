@@ -39,7 +39,6 @@ var FCM = require('fcm-node');
 var serverKey = 'AAAAPuk5zrk:APA91bHLxGWnZhau77Gg4ac3PwS6KaiC55JdZRS2Fx9Rur-BnmeuO6SYpkzscWYFTApoSSyQ7TZ6mpHNEgqqDZRTmp9ptrsRo5cwtEJqJhIyFV_aJMcgZgmJcHRUbgPvF3parGHlCnLT'; //put your server key here
 var fcm = new FCM(serverKey);
 function sendPushNotification(num_contrat, title, notification_body){
-    var type = 'test';
     db.query('SELECT device_token FROM user where num_contrat = '+num_contrat,  (err, rows, fields) => {
         if (!err){
             var referenceKey = rows[0].device_token;
@@ -96,7 +95,6 @@ io.on('connection', (socket) => {
             },1000);
       });
       socket.on('user_disconnected', function (message) {
-        clearInterval(socket_func);
         console.log(message);
         clearInterval(socket_func);
     });
@@ -157,7 +155,7 @@ app.post('/login', (req, res) => {
     var password = req.body.password;
     //var password = encrypt(req.body.password);
     db.query('SELECT * FROM user where num_contrat ='+num_contrat,(err, rows, fields) => {
-        if (rows){
+        if (rows.length > 0){
             if(decrypt(password, rows[0].password)){
                 res.send({error: false, user: rows});
             }
@@ -243,7 +241,7 @@ app.get('/', (req, res) => {
 
 });
 app.get('/testprix', (req, res) => {
-    res.send({'Prix': getPourcentage(40, 30)});
+    res.send(calcule_facture(227000,5900,178442, 60,19)+"");
 
 });
 
@@ -327,6 +325,54 @@ app.get('/get_total', (req, res) => {
           }
       });
   });
+  app.get('/ajouter_facture', (req, res) => {
+      id_client = req.query.id_client;
+      var date_inscrit;
+      var totale_litres;
+      var prix_onas;
+      var charges_fixes_sonede;
+      var tva;
+      var timbre_fiscale;
+      var total_facture;
+      sql = 'select * from consommation where id_user =?';
+      db.query(sql, [id_client], (err, rows, fields) => {
+          if(!err){
+            //date_inscrit = new Date(rows[0].date_inscrit);
+            totale_litres = rows[0].total;
+            prix_onas = getTotalOnas(parseInt(rows[0].total));
+            console.log(+"prix onas"+prix_onas);
+            db.query('select * from charges_fixes', (err, rows, fields) => {
+                if(!err){
+                    charges_fixes_sonede = rows[0].charges_fixes_sonede;
+                    tva = rows[0].tva;
+                    timbre_fiscale = rows[0].timbre_fiscale;
+                    var today = new Date();
+                    var nextDate = getDate(today,3);
+                    total_facture = calcule_facture(totale_litres,charges_fixes_sonede,prix_onas,timbre_fiscale,tva);
+                    var second_sql = 'INSERT INTO `facture`(`id_user`, `prix_onas`, `date_debut`, `date_fin`, `prix_facture`) VALUES (?, ?, ?, ?, ?)';
+                    db.query(second_sql, [id_client, prix_onas, today, nextDate, total_facture], (err, rows, fields) => {
+                        if(!err){   
+                            res.send(today+"");
+                        }
+                        else{
+                        res.send('Erreur');
+                        console.log(err+"k3");
+                        }
+                    });
+                }
+                else{
+                res.send('Erreur');
+                console.log(err);
+                }
+            });
+              
+          }
+          else{
+          res.send('Erreur');
+          console.log(err+"k1");
+          }
+      });
+  });
 
 function getTranche(total_litres){
     var tranche = 0;
@@ -381,9 +427,7 @@ function getPrix(total_litres){
     if(total >= 501){
         prix = 1315;
     }
-    prix_converted = prix/1000;
-    prix_converted =  prix_converted.toFixed(3);
-    return prix_converted;
+    return prix;
 }
 function getPourcentage(seuil, prix){
     var pourcentage= 0;
@@ -413,6 +457,41 @@ function checkSeuil(num_contrat, seuil, prix, alert_sent){
                 console.log(err);
         });
     }
+}
+function getTotalOnas(total_litres){
+    var totalOnas = 0;
+    var total = total_litres / 1000; // total est en métre cubes   1m3 = 1000 litre
+        if(total <= 20){
+            totalOnas = 1875 + total * 28;
+        }
+        if(total > 20 && total <= 40){
+            totalOnas = 1875 + (20 * 41) + ((total - 20) * 245);
+        }
+        if(total > 40 && total <= 70){
+            totalOnas = 5865 + (20 * 257) + ((total - 20) * 408);
+        }
+        if(total > 70 && total <= 100){
+            totalOnas = 11515 + (70 * 408) + ((total - 70) * 675);
+        }
+        if(total > 100 && total <= 150){
+            totalOnas = 12090 + (70 * 429) + ((total - 70) * 700);
+        }
+        if(total > 150){
+            totalOnas = 12450 + (70 * 429) + ((total - 70) * 866);
+        }
+       
+        return  totalOnas;
+}
+function getDate(nextDate, x){
+    nextDate.setMonth(nextDate.getMonth() + x);
+    return nextDate;
+}
+function calcule_facture (total_litres, charges_fixes_sonede, prix_onas, timbre_fiscale, tva){
+    var somme_sonede = getPrix(total_litres) + charges_fixes_sonede + timbre_fiscale;
+    var pourcentage = somme_sonede * (tva/100);
+    var somme_finale = somme_sonede + pourcentage + prix_onas;
+
+    return somme_finale;
 }
 server.listen(port, hostname, () => {
     console.log(`Server running at http://${hostname}:${port}/`);
