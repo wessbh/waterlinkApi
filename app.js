@@ -76,6 +76,7 @@ app.get('/sendnotifiation',(req, res) =>{
 //----------------------------------------------------------------\\
 
 //-------------------WEBSOCKET CONFIG------------------------------\\
+var socket_func;
 io = require('socket.io').listen(server);
 io.on('connection', (socket) => {
     console.log('connected');
@@ -83,7 +84,7 @@ io.on('connection', (socket) => {
     socket.emit('message', message);
       socket.on('user_id', function (num_contrat) {
         console.log(num_contrat);
-          setInterval(function(data){
+        socket_func = setInterval(function(data){
             var sql = 'SELECT valeur FROM consommation where id_user ='+num_contrat;
             db.query(sql, function(err, rows, fields) {
                 if (err) throw err;
@@ -95,7 +96,9 @@ io.on('connection', (socket) => {
             },1000);
       });
       socket.on('user_disconnected', function (message) {
+        clearInterval(socket_func);
         console.log(message);
+        clearInterval(socket_func);
     });
 });
 //-------------------------------------------------\\
